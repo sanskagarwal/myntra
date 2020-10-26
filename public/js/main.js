@@ -3,10 +3,12 @@
 var isChannelReady = false;
 var isInitiator = false;
 var isStarted = false;
-var isMature = false;
 var localStream;
 var pc;
 var remoteStream;
+var usersAlreadyPresent;
+var userIndex = -1;
+var remoteUser;
 
 /////////////////////////////////////////////
 
@@ -23,7 +25,6 @@ if (room !== "") {
 
 socket.on("created", function (room) {
   console.log("Created room " + room);
-  isMature = true;
   isInitiator = true;
 });
 
@@ -37,28 +38,40 @@ socket.on("join", function (room) {
   isChannelReady = true;
 });
 
-socket.on("joined", function (room) {
+socket.on("joined", function (room, socketId, sockets) {
   console.log("joined: " + room);
+  usersAlreadyPresent = sockets;
   isChannelReady = true;
 });
 
-socket.on("log", function (array) {
-  console.log.apply(console, array);
-});
+// socket.on("log", function (array) {
+//   console.log.apply(console, array);
+// });
 
 ////////////////////////////////////////////////
 
 function sendMessage(message) {
+  if (isInitiator === false) {
+    message.sendToRemoteUser = true;
+  }
+
+  message.fromInitiator = isInitiator;
+  message.remoteUser = remoteUser;
   console.log("Client sending message: ", message);
   socket.emit("message", message);
 }
+
+console.log(socket);
 
 // This client receives a message
 socket.on("message", function (message) {
   console.log("Client received message:", message);
   if (message === "got user media") {
     maybeStart();
-  } else if (message.type === "offer" && !isMature) {
+  } else if (
+    message.type === "offer" &&
+    !(message.fromInitiator && isInitiator)
+  ) {
     if (!isInitiator && !isStarted) {
       maybeStart();
     }
@@ -67,15 +80,10 @@ socket.on("message", function (message) {
   } else if (
     message.type === "answer" &&
     isStarted &&
-    isMature &&
-    !(isMature === true && message.fromMature === true)
+    !(message.fromInitiator && isInitiator)
   ) {
     pc.setRemoteDescription(new RTCSessionDescription(message));
-  } else if (
-    message.type === "candidate" &&
-    isStarted &&
-    !(isMature === true && message.fromMature === true)
-  ) {
+  } else if (message.type === "candidate" && isStarted) {
     var candidate = new RTCIceCandidate({
       sdpMLineIndex: message.label,
       candidate: message.candidate,
@@ -105,10 +113,22 @@ function gotStream(stream) {
   console.log("Adding local stream.");
   localStream = stream;
   localVideo.srcObject = stream;
+  interactUser();
   sendMessage("got user media");
   if (isInitiator) {
     maybeStart();
   }
+}
+
+function interactUser() {
+  userIndex++;
+  console.log(userIndex);
+  if (
+    usersAlreadyPresent &&
+    Array.isArray(usersAlreadyPresent) &&
+    usersAlreadyPresent.length > userIndex
+  )
+    remoteUser = usersAlreadyPresent[userIndex];
 }
 
 var constraints = {
@@ -156,14 +176,12 @@ function handleIceCandidate(event) {
   if (event.candidate) {
     sendMessage({
       type: "candidate",
-      fromMature: isMature,
       label: event.candidate.sdpMLineIndex,
       id: event.candidate.sdpMid,
       candidate: event.candidate.candidate,
     });
   } else {
     console.log("End of candidates.");
-    isMature = true;
     isInitiator = true;
     isStarted = false;
     isChannelReady = false;
@@ -188,7 +206,6 @@ function doAnswer() {
 }
 
 function setLocalAndSendMessage(sessionDescription) {
-  sessionDescription.fromMature = isMature;
   pc.setLocalDescription(sessionDescription);
   console.log("setLocalAndSendMessage sending message", sessionDescription);
   sendMessage(sessionDescription);
@@ -225,7 +242,6 @@ function handleRemoteHangup() {
 }
 
 function stop() {
-  isMature = false;
   isInitiator = false;
   isStarted = false;
   isChannelReady = false;

@@ -15,39 +15,34 @@ app.get("/", (req, res) => {
 });
 
 io.sockets.on("connection", function (socket) {
-  // convenience function to log server messages on the client
-  function log() {
-    var array = ["Message from server:"];
-    array.push.apply(array, arguments);
-    socket.emit("log", array);
-  }
-
   socket.on("message", function (message) {
-    log("Client said: ", message);
-    // for a real app, would be room-only (not broadcast)
-    socket.broadcast.emit("message", message);
+    if (message.sendToRemoteUser) {
+      socket.broadcast.to(message.remoteUser).emit("message", message);
+    } else {
+      socket.broadcast.emit("message", message);
+    }
   });
 
   socket.on("create or join", function (room) {
-    log("Received request to create or join room " + room);
-
     var clientsInRoom = io.sockets.adapter.rooms[room];
+    console.log(clientsInRoom ? Object.keys(clientsInRoom.sockets) : true);
     var numClients = clientsInRoom
       ? Object.keys(clientsInRoom.sockets).length
       : 0;
     console.log(numClients);
-    log("Room " + room + " now has " + numClients + " client(s)");
 
     if (numClients === 0) {
       socket.join(room);
-      log("Client ID " + socket.id + " created room " + room);
       socket.emit("created", room, socket.id);
     } else {
-      // if (numClients === 1) {
-      log("Client ID " + socket.id + " joined room " + room);
       io.sockets.in(room).emit("join", room);
       socket.join(room);
-      socket.emit("joined", room, socket.id);
+      socket.emit(
+        "joined",
+        room,
+        socket.id,
+        Object.keys(clientsInRoom.sockets)
+      );
       io.sockets.in(room).emit("ready");
     }
     // else {
