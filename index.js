@@ -17,7 +17,7 @@ app.get("/", (req, res) => {
 io.sockets.on("connection", function (socket) {
   socket.on("message", function (message) {
     if (message.sendToRemoteUser) {
-      socket.broadcast.to(message.remoteUser).emit("message", message);
+      socket.broadcast.to(message.to).emit("message", message);
     } else {
       socket.broadcast.emit("message", message);
     }
@@ -25,7 +25,6 @@ io.sockets.on("connection", function (socket) {
 
   socket.on("create or join", function (room) {
     var clientsInRoom = io.sockets.adapter.rooms[room];
-    console.log(clientsInRoom ? Object.keys(clientsInRoom.sockets) : true);
     var numClients = clientsInRoom
       ? Object.keys(clientsInRoom.sockets).length
       : 0;
@@ -45,6 +44,8 @@ io.sockets.on("connection", function (socket) {
       );
       io.sockets.in(room).emit("ready");
     }
+    console.log(clientsInRoom ? Object.keys(clientsInRoom.sockets) : true);
+
     // else {
     //   // max two clients
     //   socket.emit("full", room);

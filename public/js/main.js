@@ -9,6 +9,7 @@ var remoteStream;
 var usersAlreadyPresent;
 var userIndex = -1;
 var remoteUser;
+var currentUser;
 
 /////////////////////////////////////////////
 
@@ -26,6 +27,7 @@ if (room !== "") {
 socket.on("created", function (room) {
   console.log("Created room " + room);
   isInitiator = true;
+  currentUser = socket.id;
 });
 
 // socket.on("full", function (room) {
@@ -36,12 +38,18 @@ socket.on("join", function (room) {
   console.log("Another peer made a request to join room " + room);
   console.log("This peer is the initiator of room " + room + "!");
   isChannelReady = true;
+  currentUser = socket.id;
 });
 
 socket.on("joined", function (room, socketId, sockets) {
   console.log("joined: " + room);
   usersAlreadyPresent = sockets;
+  usersAlreadyPresent = usersAlreadyPresent.slice(
+    0,
+    usersAlreadyPresent.length - 1
+  );
   isChannelReady = true;
+  currentUser = socket.id;
 });
 
 // socket.on("log", function (array) {
@@ -51,12 +59,12 @@ socket.on("joined", function (room, socketId, sockets) {
 ////////////////////////////////////////////////
 
 function sendMessage(message) {
-  if (isInitiator === false) {
+  if (isInitiator === false && usersAlreadyPresent) {
     message.sendToRemoteUser = true;
   }
-
   message.fromInitiator = isInitiator;
-  message.remoteUser = remoteUser;
+  message.from = currentUser;
+  message.to = remoteUser;
   console.log("Client sending message: ", message);
   socket.emit("message", message);
 }
@@ -65,11 +73,14 @@ console.log(socket);
 
 // This client receives a message
 socket.on("message", function (message) {
+  remoteUser = message.from ? message.from : remoteUser;
+  console.log(remoteUser);
   console.log("Client received message:", message);
-  if (message === "got user media") {
+  if (message.type === "init") {
     maybeStart();
   } else if (
     message.type === "offer" &&
+    !isInitiator &&
     !(message.fromInitiator && isInitiator)
   ) {
     if (!isInitiator && !isStarted) {
@@ -104,17 +115,14 @@ navigator.mediaDevices
     audio: false,
     video: true,
   })
-  .then(gotStream)
-  .catch(function (e) {
-    alert("getUserMedia() error: " + e.name);
-  });
+  .then(gotStream);
 
 function gotStream(stream) {
   console.log("Adding local stream.");
   localStream = stream;
   localVideo.srcObject = stream;
   interactUser();
-  sendMessage("got user media");
+  sendMessage({ type: "init" });
   if (isInitiator) {
     maybeStart();
   }
@@ -123,12 +131,9 @@ function gotStream(stream) {
 function interactUser() {
   userIndex++;
   console.log(userIndex);
-  if (
-    usersAlreadyPresent &&
-    Array.isArray(usersAlreadyPresent) &&
-    usersAlreadyPresent.length > userIndex
-  )
+  if (usersAlreadyPresent && usersAlreadyPresent.length > userIndex) {
     remoteUser = usersAlreadyPresent[userIndex];
+  }
 }
 
 var constraints = {
@@ -182,9 +187,21 @@ function handleIceCandidate(event) {
     });
   } else {
     console.log("End of candidates.");
-    isInitiator = true;
-    isStarted = false;
-    isChannelReady = false;
+    if (isInitiator) {
+      isInitiator = true;
+      isStarted = false;
+      isChannelReady = false;
+    } else if (userIndex + 1 === usersAlreadyPresent.length) {
+      isInitiator = true;
+      isStarted = false;
+      isChannelReady = false;
+    } else {
+      isInitiator = false;
+      isStarted = false;
+      isChannelReady = true;
+      interactUser();
+      sendMessage({ type: "init" });
+    }
   }
 }
 
