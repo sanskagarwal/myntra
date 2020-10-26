@@ -23,6 +23,15 @@ io.sockets.on("connection", function (socket) {
     }
   });
 
+  socket.on("disconnecting", () => {
+    var rooms = Object.keys(socket.rooms);
+    console.log(socket.id);
+    console.log(rooms);
+    rooms.forEach(function (room) {
+      socket.to(room).emit("disconnected", socket.id);
+    });
+  });
+
   socket.on("create or join", function (room) {
     var clientsInRoom = io.sockets.adapter.rooms[room];
     var numClients = clientsInRoom
@@ -44,12 +53,6 @@ io.sockets.on("connection", function (socket) {
       );
       io.sockets.in(room).emit("ready");
     }
-    console.log(clientsInRoom ? Object.keys(clientsInRoom.sockets) : true);
-
-    // else {
-    //   // max two clients
-    //   socket.emit("full", room);
-    // }
   });
 
   socket.on("ipaddr", function () {

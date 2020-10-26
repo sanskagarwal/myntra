@@ -1,28 +1,38 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <title>Realtime communication with WebRTC</title>
 
-<head>
+    <!-- Latest compiled and minified CSS -->
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/main.css" />
+  </head>
 
-  <title>Realtime communication with WebRTC</title>
+  <body>
+    <div class="container">
+      <h1 class="text-center">Realtime communication with WebRTC</h1>
 
-  <link rel="stylesheet" href="/css/main.css" />
+      <div id="videos">
+        <video id="localVideo" autoplay muted playsinline></video>
+      </div>
+    </div>
 
-</head>
+    <!-- jQuery library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <!-- Popper JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <!-- Latest compiled JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Socket IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- Browser Things -->
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 
-<body>
-
-  <h1>Realtime communication with WebRTC</h1>
-
-  <div id="videos">
-    <video id="localVideo" autoplay muted playsinline></video>
-    <video id="remoteVideo" autoplay playsinline></video>
-  </div>
-
-  <!-- This file is automatically added/served when running "node index.js". -->
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-  <script src="js/main.js"></script>
-
-</body>
-
+    <!-- WebRTC -->
+    <script src="js/main.js"></script>
+  </body>
 </html>

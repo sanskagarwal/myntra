@@ -52,6 +52,13 @@ socket.on("joined", function (room, socketId, sockets) {
   currentUser = socket.id;
 });
 
+socket.on("disconnected", function (socketId) {
+  var videoElement = document.getElementById("user-" + socketId);
+  if (videoElement) {
+    videoElement.remove();
+  }
+});
+
 // socket.on("log", function (array) {
 //   console.log.apply(console, array);
 // });
@@ -108,7 +115,6 @@ socket.on("message", function (message) {
 ////////////////////////////////////////////////////
 
 var localVideo = document.querySelector("#localVideo");
-var remoteVideo = document.querySelector("#remoteVideo");
 
 navigator.mediaDevices
   .getUserMedia({
@@ -235,7 +241,14 @@ function onCreateSessionDescriptionError(error) {
 function handleRemoteStreamAdded(event) {
   console.log("Remote stream added.");
   remoteStream = event.stream;
+
+  var remoteVideo = document.createElement("video");
+  remoteVideo.setAttribute("id", "user-" + remoteUser);
+  remoteVideo.autoplay = true;
+  remoteVideo.playsinline = true;
   remoteVideo.srcObject = remoteStream;
+
+  document.getElementById("videos").appendChild(remoteVideo);
 }
 
 // TODO This function hasn't fired in testing yet, so the variables change might be buggy.
@@ -262,6 +275,10 @@ function stop() {
   isInitiator = false;
   isStarted = false;
   isChannelReady = false;
+  usersAlreadyPresent = undefined;
+  userIndex = -1;
+  remoteUser = undefined;
+  currentUser = undefined;
 
   pc.close();
   pc = null;
