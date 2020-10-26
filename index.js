@@ -35,23 +35,25 @@ io.sockets.on("connection", function (socket) {
     var numClients = clientsInRoom
       ? Object.keys(clientsInRoom.sockets).length
       : 0;
-
+    console.log(numClients);
     log("Room " + room + " now has " + numClients + " client(s)");
 
     if (numClients === 0) {
       socket.join(room);
       log("Client ID " + socket.id + " created room " + room);
       socket.emit("created", room, socket.id);
-    } else if (numClients === 1) {
+    } else {
+      // if (numClients === 1) {
       log("Client ID " + socket.id + " joined room " + room);
       io.sockets.in(room).emit("join", room);
       socket.join(room);
       socket.emit("joined", room, socket.id);
       io.sockets.in(room).emit("ready");
-    } else {
-      // max two clients
-      socket.emit("full", room);
     }
+    // else {
+    //   // max two clients
+    //   socket.emit("full", room);
+    // }
   });
 
   socket.on("ipaddr", function () {

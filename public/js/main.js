@@ -3,24 +3,10 @@
 var isChannelReady = false;
 var isInitiator = false;
 var isStarted = false;
+var isMature = false;
 var localStream;
 var pc;
 var remoteStream;
-var turnReady;
-
-var pcConfig = {
-  iceServers: [
-    {
-      urls: "stun:stun.l.google.com:19302",
-    },
-  ],
-};
-
-// Set up audio and video regardless of what devices are present.
-var sdpConstraints = {
-  offerToReceiveAudio: true,
-  offerToReceiveVideo: true,
-};
 
 /////////////////////////////////////////////
 
@@ -37,12 +23,13 @@ if (room !== "") {
 
 socket.on("created", function (room) {
   console.log("Created room " + room);
+  isMature = true;
   isInitiator = true;
 });
 
-socket.on("full", function (room) {
-  console.log("Room " + room + " is full");
-});
+// socket.on("full", function (room) {
+//   console.log("Room " + room + " is full");
+// });
 
 socket.on("join", function (room) {
   console.log("Another peer made a request to join room " + room);
@@ -71,15 +58,24 @@ socket.on("message", function (message) {
   console.log("Client received message:", message);
   if (message === "got user media") {
     maybeStart();
-  } else if (message.type === "offer") {
+  } else if (message.type === "offer" && !isMature) {
     if (!isInitiator && !isStarted) {
       maybeStart();
     }
     pc.setRemoteDescription(new RTCSessionDescription(message));
     doAnswer();
-  } else if (message.type === "answer" && isStarted) {
+  } else if (
+    message.type === "answer" &&
+    isStarted &&
+    isMature &&
+    !(isMature === true && message.fromMature === true)
+  ) {
     pc.setRemoteDescription(new RTCSessionDescription(message));
-  } else if (message.type === "candidate" && isStarted) {
+  } else if (
+    message.type === "candidate" &&
+    isStarted &&
+    !(isMature === true && message.fromMature === true)
+  ) {
     var candidate = new RTCIceCandidate({
       sdpMLineIndex: message.label,
       candidate: message.candidate,
@@ -121,12 +117,6 @@ var constraints = {
 
 console.log("Getting user media with constraints", constraints);
 
-if (location.hostname !== "localhost") {
-  requestTurn(
-    "https://computeengineondemand.appspot.com/turn?username=41784574&key=4080218913"
-  );
-}
-
 function maybeStart() {
   console.log(">>>>>>> maybeStart() ", isStarted, localStream, isChannelReady);
   if (!isStarted && typeof localStream !== "undefined" && isChannelReady) {
@@ -166,12 +156,17 @@ function handleIceCandidate(event) {
   if (event.candidate) {
     sendMessage({
       type: "candidate",
+      fromMature: isMature,
       label: event.candidate.sdpMLineIndex,
       id: event.candidate.sdpMid,
       candidate: event.candidate.candidate,
     });
   } else {
     console.log("End of candidates.");
+    isMature = true;
+    isInitiator = true;
+    isStarted = false;
+    isChannelReady = false;
   }
 }
 
@@ -193,6 +188,7 @@ function doAnswer() {
 }
 
 function setLocalAndSendMessage(sessionDescription) {
+  sessionDescription.fromMature = isMature;
   pc.setLocalDescription(sessionDescription);
   console.log("setLocalAndSendMessage sending message", sessionDescription);
   sendMessage(sessionDescription);
@@ -202,43 +198,19 @@ function onCreateSessionDescriptionError(error) {
   trace("Failed to create session description: " + error.toString());
 }
 
-function requestTurn(turnURL) {
-  var turnExists = false;
-  for (var i in pcConfig.iceServers) {
-    if (pcConfig.iceServers[i].urls.substr(0, 5) === "turn:") {
-      turnExists = true;
-      turnReady = true;
-      break;
-    }
-  }
-  if (!turnExists) {
-    console.log("Getting TURN server from ", turnURL);
-    // No TURN server. Get one from computeengineondemand.appspot.com:
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4 && xhr.status === 200) {
-        var turnServer = JSON.parse(xhr.responseText);
-        console.log("Got TURN server: ", turnServer);
-        pcConfig.iceServers.push({
-          urls: "turn:" + turnServer.username + "@" + turnServer.turn,
-          credential: turnServer.password,
-        });
-        turnReady = true;
-      }
-    };
-    xhr.open("GET", turnURL, true);
-    xhr.send();
-  }
-}
-
 function handleRemoteStreamAdded(event) {
   console.log("Remote stream added.");
   remoteStream = event.stream;
   remoteVideo.srcObject = remoteStream;
 }
 
+// TODO This function hasn't fired in testing yet, so the variables change might be buggy.
 function handleRemoteStreamRemoved(event) {
+  console.error("Triggered??");
   console.log("Remote stream removed. Event: ", event);
+  // isInitiator = false;
+  // isChannelReady = false;
+  // isStarted = false;
 }
 
 function hangup() {
@@ -250,11 +222,14 @@ function hangup() {
 function handleRemoteHangup() {
   console.log("Session terminated.");
   stop();
-  isInitiator = false;
 }
 
 function stop() {
+  isMature = false;
+  isInitiator = false;
   isStarted = false;
+  isChannelReady = false;
+
   pc.close();
   pc = null;
 }
