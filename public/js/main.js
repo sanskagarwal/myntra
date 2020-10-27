@@ -21,12 +21,13 @@ var room = "foo";
 var socket = io.connect();
 socket.on("connect", function () {
   currentUser = socket.id;
-  setupEvents();
+  notifyRemoteOfJoining();
 });
 
 socket.on("created", function (room) {
   console.log("Created room " + room);
   isInitiator = true;
+  setupEvents();
 });
 
 socket.on("join", function (room) {
@@ -43,6 +44,7 @@ socket.on("joined", function (room, socketId, sockets) {
     usersAlreadyPresent.length - 1
   );
   isChannelReady = true;
+  setupEvents();
 });
 
 socket.on("disconnected", function (socketId) {
@@ -102,12 +104,14 @@ socket.on("message", function (message) {
 ////////////////////////////////////////////////////
 
 // Wait for socket to get it's id.
-function setupEvents() {
+function notifyRemoteOfJoining() {
   if (room !== "") {
     socket.emit("create or join", room);
     console.log("Attempted to create or join room", room);
   }
+}
 
+function setupEvents() {
   navigator.mediaDevices
     .getUserMedia({
       audio: false,
