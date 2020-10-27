@@ -190,6 +190,16 @@ function handleIceCandidate(event) {
     });
   } else {
     console.log("End of candidates.");
+
+    maybeEnd();
+  }
+}
+
+// Super Buggy Function, find a better way to do it.
+// This will be exponentially poor.
+function maybeEnd() {
+  // Assuming this will be called after the last step.
+  setTimeout(function () {
     if (isInitiator) {
       isInitiator = true;
       isStarted = false;
@@ -205,7 +215,7 @@ function handleIceCandidate(event) {
       interactUser();
       sendMessage({ type: "init" });
     }
-  }
+  }, 2000);
 }
 
 function handleCreateOfferError(event) {
@@ -214,21 +224,30 @@ function handleCreateOfferError(event) {
 
 function doCall() {
   console.log("Sending offer to peer");
-  pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
+  pc.createOffer()
+    .then(function (offer) {
+      return pc.setLocalDescription(offer);
+    })
+    .then(function () {
+      var offer = pc.localDescription;
+      offer.fromInitiator = isInitiator;
+      sendMessage(offer);
+    })
+    .catch(handleCreateOfferError);
 }
 
 function doAnswer() {
   console.log("Sending answer to peer.");
-  pc.createAnswer().then(
-    setLocalAndSendMessage,
-    onCreateSessionDescriptionError
-  );
-}
-
-function setLocalAndSendMessage(sessionDescription) {
-  pc.setLocalDescription(sessionDescription);
-  console.log("setLocalAndSendMessage sending message", sessionDescription);
-  sendMessage(sessionDescription);
+  pc.createAnswer()
+    .then(function (answer) {
+      return pc.setLocalDescription(answer);
+    })
+    .then(function () {
+      var answer = pc.localDescription;
+      answer.fromInitiator = isInitiator;
+      sendMessage(answer);
+    })
+    .catch(onCreateSessionDescriptionError);
 }
 
 function onCreateSessionDescriptionError(error) {
