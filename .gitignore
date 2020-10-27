@@ -1,3 +1,7 @@
 # NodeJS
 node_modules/
 package-lock.json
+
+# Azure App Service
+.deployment
+.vscode

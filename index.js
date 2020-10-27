@@ -5,6 +5,7 @@ const os = require("os");
 const server = http.createServer(app);
 const socketio = require("socket.io");
 const io = socketio(server);
+const port = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -67,6 +68,6 @@ io.sockets.on("connection", function (socket) {
   });
 });
 
-server.listen(3000, () => {
-  return console.log("Server is up on 3000");
+server.listen(port, () => {
+  return console.log(`Server is up on ${port}`);
 });

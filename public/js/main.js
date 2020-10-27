@@ -10,6 +10,7 @@ var usersAlreadyPresent;
 var userIndex = -1;
 var remoteUser;
 var currentUser;
+var localVideo = document.querySelector("#localVideo");
 
 /////////////////////////////////////////////
 
@@ -18,27 +19,20 @@ var room = "foo";
 // room = prompt('Enter room name:');
 
 var socket = io.connect();
-
-if (room !== "") {
-  socket.emit("create or join", room);
-  console.log("Attempted to create or join room", room);
-}
+socket.on("connect", function () {
+  currentUser = socket.id;
+  setupEvents();
+});
 
 socket.on("created", function (room) {
   console.log("Created room " + room);
   isInitiator = true;
-  currentUser = socket.id;
 });
-
-// socket.on("full", function (room) {
-//   console.log("Room " + room + " is full");
-// });
 
 socket.on("join", function (room) {
   console.log("Another peer made a request to join room " + room);
   console.log("This peer is the initiator of room " + room + "!");
   isChannelReady = true;
-  currentUser = socket.id;
 });
 
 socket.on("joined", function (room, socketId, sockets) {
@@ -49,7 +43,6 @@ socket.on("joined", function (room, socketId, sockets) {
     usersAlreadyPresent.length - 1
   );
   isChannelReady = true;
-  currentUser = socket.id;
 });
 
 socket.on("disconnected", function (socketId) {
@@ -58,10 +51,6 @@ socket.on("disconnected", function (socketId) {
     videoElement.remove();
   }
 });
-
-// socket.on("log", function (array) {
-//   console.log.apply(console, array);
-// });
 
 ////////////////////////////////////////////////
 
@@ -75,8 +64,6 @@ function sendMessage(message) {
   console.log("Client sending message: ", message);
   socket.emit("message", message);
 }
-
-console.log(socket);
 
 // This client receives a message
 socket.on("message", function (message) {
@@ -114,14 +101,20 @@ socket.on("message", function (message) {
 
 ////////////////////////////////////////////////////
 
-var localVideo = document.querySelector("#localVideo");
+// Wait for socket to get it's id.
+function setupEvents() {
+  if (room !== "") {
+    socket.emit("create or join", room);
+    console.log("Attempted to create or join room", room);
+  }
 
-navigator.mediaDevices
-  .getUserMedia({
-    audio: false,
-    video: true,
-  })
-  .then(gotStream);
+  navigator.mediaDevices
+    .getUserMedia({
+      audio: false,
+      video: true,
+    })
+    .then(gotStream);
+}
 
 function gotStream(stream) {
   console.log("Adding local stream.");
