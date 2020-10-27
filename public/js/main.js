@@ -253,7 +253,7 @@ function handleRemoteStreamAdded(event) {
 
 // TODO This function hasn't fired in testing yet, so the variables change might be buggy.
 function handleRemoteStreamRemoved(event) {
-  console.error("Triggered??");
+  // console.error("Triggered??");
   console.log("Remote stream removed. Event: ", event);
   // isInitiator = false;
   // isChannelReady = false;
@@ -282,4 +282,23 @@ function stop() {
 
   pc.close();
   pc = null;
+}
+
+let mic_switch = true;
+let video_switch = true;
+
+function toggleVideo() {
+  if (localStream != null && localStream.getVideoTracks().length > 0) {
+    video_switch = !video_switch;
+
+    localStream.getVideoTracks()[0].enabled = video_switch;
+  }
+}
+
+function toggleMic() {
+  if (localStream != null && localStream.getAudioTracks().length > 0) {
+    mic_switch = !mic_switch;
+
+    localStream.getAudioTracks()[0].enabled = mic_switch;
+  }
 }
